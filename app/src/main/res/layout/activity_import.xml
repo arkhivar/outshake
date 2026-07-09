@@ -3,30 +3,35 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/background"
+    android:padding="24dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/import_title"
+        android:textColor="@color/on_surface"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:paddingBottom="12dp" />
+        android:paddingBottom="16dp" />
 
     <EditText
         android:id="@+id/keyInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/key_hint"
+        android:textColor="@color/on_surface"
+        android:textColorHint="@color/on_surface_secondary"
         android:inputType="textMultiLine"
         android:minLines="3"
         android:gravity="top" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/importButton"
+        style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:text="@string/import_action" />
 
     <ProgressBar
@@ -35,6 +40,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="16dp"
+        android:indeterminateTint="@color/accent"
         android:visibility="gone" />
 
     <TextView
@@ -42,5 +48,5 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:textColor="#C62828" />
+        android:textColor="@color/error" />
 </LinearLayout>

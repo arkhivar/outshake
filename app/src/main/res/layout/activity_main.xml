@@ -1,47 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/background"
+    android:padding="24dp">
 
     <TextView
-        android:id="@+id/statusText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Disconnected"
-        android:textSize="22sp"
+        android:text="@string/app_name"
+        android:textColor="@color/on_surface"
+        android:textSize="16sp"
+        android:letterSpacing="0.02"
         android:textStyle="bold"
-        android:paddingBottom="4dp" />
+        android:paddingBottom="24dp" />
 
-    <TextView
-        android:id="@+id/activeText"
+    <!-- Hero: the connection toggle is the centerpiece. -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No active profile"
-        android:textSize="14sp"
-        android:paddingBottom="12dp" />
-
-    <Button
-        android:id="@+id/toggleButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/connect" />
-
-    <TextView
-        android:id="@+id/errorText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#C62828"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
         android:paddingTop="8dp"
-        android:visibility="gone" />
+        android:paddingBottom="16dp">
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Disconnected"
+            android:textColor="@color/on_surface"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/activeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No active profile"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="14sp"
+            android:paddingTop="4dp"
+            android:paddingBottom="28dp" />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/connectSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:scaleX="2.6"
+                android:scaleY="2.6"
+                android:layout_gravity="center"
+                app:trackTint="@color/switch_track_tint"
+                app:thumbTint="@color/switch_thumb_tint" />
+
+            <ProgressBar
+                android:id="@+id/connectProgress"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/accent"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/errorText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/error"
+            android:textSize="13sp"
+            android:paddingTop="24dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/outline" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Profiles"
+        android:textColor="@color/on_surface"
         android:textStyle="bold"
-        android:paddingTop="20dp"
+        android:textSize="15sp"
         android:paddingBottom="4dp" />
 
     <TextView
@@ -49,6 +101,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/no_profiles"
+        android:textColor="@color/on_surface_secondary"
+        android:textSize="14sp"
+        android:paddingTop="4dp"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -61,17 +116,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingTop="8dp">
+        android:paddingTop="12dp">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/addButton"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:text="@string/add_profile" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"

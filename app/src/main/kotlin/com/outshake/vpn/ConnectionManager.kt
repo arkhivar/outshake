@@ -3,6 +3,7 @@ package com.outshake.vpn
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.outshake.shake.Haptics
 import com.outshake.store.ProfileStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ object ConnectionManager {
     fun connect(context: Context, profileId: String) {
         val app = context.applicationContext
         if (_state.value == State.CONNECTING || _state.value == State.CONNECTED) return
+        Haptics.fire(app, Haptics.Cue.ON)
         lastError = null
         activeProfileId = profileId
         ProfileStore(app).activeProfileId = profileId
@@ -42,6 +44,7 @@ object ConnectionManager {
     fun disconnect(context: Context) {
         val app = context.applicationContext
         if (_state.value == State.DISCONNECTED || _state.value == State.DISCONNECTING) return
+        Haptics.fire(app, Haptics.Cue.OFF)
         _state.value = State.DISCONNECTING
         val intent = Intent(app, OutshakeVpnService::class.java).apply {
             action = OutshakeVpnService.ACTION_DISCONNECT

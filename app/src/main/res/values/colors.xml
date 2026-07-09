@@ -1,5 +1,18 @@
 <resources>
-    <color name="primary">#2E7D32</color>
+    <!-- Single calm warm-neutral palette, comfortable day and night. One accent (teal) + neutrals. -->
+    <color name="background">#F7F6F2</color>
+    <color name="surface">#F7F6F2</color>
+    <color name="surface_raised">#FFFFFF</color>
+    <color name="on_surface">#28251D</color>
+    <color name="on_surface_secondary">#7A7974</color>
+    <color name="accent">#01696F</color>
+    <color name="accent_pressed">#0C4E54</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="error">#A12C7B</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="success">#437A22</color>
+    <color name="outline">#D4D1CA</color>
+
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
 </resources>

@@ -1,62 +1,109 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/background"
+    android:fillViewport="true">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/settings"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:paddingBottom="16dp" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/shakeSwitch"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/shake_toggle"
-        android:textSize="16sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings"
+            android:textColor="@color/on_surface"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:paddingBottom="24dp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/shake_sensitivity"
-        android:paddingTop="24dp" />
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/shakeSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/shake_toggle"
+            android:textColor="@color/on_surface"
+            android:textSize="16sp"
+            app:trackTint="@color/switch_track_tint"
+            app:thumbTint="@color/switch_thumb_tint" />
 
-    <TextView
-        android:id="@+id/sensitivityValue"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="12sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/shake_sensitivity"
+            android:textColor="@color/on_surface"
+            android:paddingTop="24dp" />
 
-    <SeekBar
-        android:id="@+id/sensitivitySeek"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100" />
+        <TextView
+            android:id="@+id/sensitivityValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="12sp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="8dp"
-        android:textSize="12sp"
-        android:text="Lower = easier to trigger. A ~5s cooldown prevents repeated toggles. Shake detection keeps running in the background (a quiet notification shows while active) and plays a short shaker sound plus an on-screen message when it toggles the VPN." />
+        <SeekBar
+            android:id="@+id/sensitivitySeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/accent"
+            android:thumbTint="@color/accent"
+            android:max="100" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/bootSwitch"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="24dp"
-        android:text="Connect on boot"
-        android:textSize="16sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="12sp"
+            android:text="Lower = easier to trigger. A ~5s cooldown prevents repeated toggles. Shake detection keeps running in the background (a quiet notification shows while active) and plays a short shaker sound plus an on-screen message when it toggles the VPN." />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="8dp"
-        android:textSize="12sp"
-        android:text="Automatically connect the active profile after the device restarts. VPN permission must already be granted (open the app once and connect); if it isn't, a notification will ask you to grant it." />
-</LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/outline" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/vibrateSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="Vibrate on toggle"
+            android:textColor="@color/on_surface"
+            android:textSize="16sp"
+            app:trackTint="@color/switch_track_tint"
+            app:thumbTint="@color/switch_thumb_tint" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="12sp"
+            android:text="Feel a short tick when the VPN toggles — one tap for on, a double tap for off. Fires whether you toggle by shake, the switch, or the quick-settings tile." />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/bootSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="24dp"
+            android:text="Connect on boot"
+            android:textColor="@color/on_surface"
+            android:textSize="16sp"
+            app:trackTint="@color/switch_track_tint"
+            app:thumbTint="@color/switch_thumb_tint" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="12sp"
+            android:text="Automatically connect the active profile after the device restarts. VPN permission must already be granted (open the app once and connect); if it isn't, a notification will ask you to grant it." />
+    </LinearLayout>
+</ScrollView>

@@ -28,6 +28,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var store: ProfileStore
     private lateinit var adapter: ProfileAdapter
 
+    /** Guards the switch listener while we set its state programmatically from the StateFlow. */
+    private var bindingSwitch = false
+
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best effort */ }
 
@@ -51,7 +54,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.addButton.setOnClickListener { startActivity(Intent(this, ImportActivity::class.java)) }
         binding.settingsButton.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
-        binding.toggleButton.setOnClickListener { onToggleClicked() }
+        binding.connectSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (bindingSwitch) return@setOnCheckedChangeListener
+            onUserToggle(isChecked)
+        }
 
         lifecycleScope.launch {
             ConnectionManager.state.collect { render(it) }
@@ -77,21 +83,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onToggleClicked() {
-        when (ConnectionManager.state.value) {
-            ConnectionManager.State.CONNECTED -> ConnectionManager.disconnect(this)
-            ConnectionManager.State.CONNECTING, ConnectionManager.State.DISCONNECTING,
-            ConnectionManager.State.RECONNECTING -> {}
-            else -> {
-                val active = store.activeProfile()
-                if (active == null) {
-                    Toast.makeText(this, "Select or import a profile first", Toast.LENGTH_SHORT).show()
-                    return
-                }
-                val prepare = VpnService.prepare(this)
-                if (prepare != null) vpnPrepare.launch(prepare)
-                else ConnectionManager.connect(this, active.id)
+    /** Called only for genuine user flips of the big toggle (programmatic changes are guarded). */
+    private fun onUserToggle(wantOn: Boolean) {
+        if (wantOn) {
+            val active = store.activeProfile()
+            if (active == null) {
+                Toast.makeText(this, "Select or import a profile first", Toast.LENGTH_SHORT).show()
+                render(ConnectionManager.state.value) // snap the switch back to the true state
+                return
             }
+            val prepare = VpnService.prepare(this)
+            if (prepare != null) vpnPrepare.launch(prepare)
+            else ConnectionManager.connect(this, active.id)
+        } else {
+            ConnectionManager.disconnect(this)
         }
     }
 
@@ -112,10 +117,31 @@ class MainActivity : AppCompatActivity() {
             ConnectionManager.State.DISCONNECTING -> "Disconnecting…"
             ConnectionManager.State.ERROR -> "Error"
         }
-        binding.toggleButton.text = when (state) {
-            ConnectionManager.State.CONNECTED -> getString(R.string.disconnect)
-            else -> getString(R.string.connect)
+        val statusColor = when (state) {
+            ConnectionManager.State.CONNECTED -> R.color.accent
+            ConnectionManager.State.ERROR -> R.color.error
+            else -> R.color.on_surface
         }
+        binding.statusText.setTextColor(getColor(statusColor))
+
+        // Transitions are intermediate: disable input and show progress; the switch reflects intent.
+        val transitioning = state == ConnectionManager.State.CONNECTING ||
+            state == ConnectionManager.State.RECONNECTING ||
+            state == ConnectionManager.State.DISCONNECTING
+        val on = when (state) {
+            ConnectionManager.State.CONNECTED,
+            ConnectionManager.State.CONNECTING,
+            ConnectionManager.State.RECONNECTING -> true
+            else -> false
+        }
+
+        bindingSwitch = true
+        binding.connectSwitch.isChecked = on
+        bindingSwitch = false
+        binding.connectSwitch.isEnabled = !transitioning
+        binding.connectProgress.visibility =
+            if (transitioning) android.view.View.VISIBLE else android.view.View.GONE
+
         val err = ConnectionManager.lastError
         if (state == ConnectionManager.State.ERROR && err != null) {
             binding.errorText.visibility = android.view.View.VISIBLE

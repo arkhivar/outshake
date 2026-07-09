@@ -61,6 +61,11 @@ class ProfileStore(context: Context) {
         get() = prefs.getBoolean(KEY_CONNECT_ON_BOOT, false)
         set(value) = prefs.edit().putBoolean(KEY_CONNECT_ON_BOOT, value).apply()
 
+    /** Fire a short haptic tick at the accepted-toggle moment (same instant as the shake sound). ON by default. */
+    var vibrateOnToggle: Boolean
+        get() = prefs.getBoolean(KEY_VIBRATE, true)
+        set(value) = prefs.edit().putBoolean(KEY_VIBRATE, value).apply()
+
     /**
      * The user's intent: true while the VPN should be up. Persisted so a process-death restart
      * (START_STICKY) can re-establish the tunnel and the UI can reflect the true desired state.
@@ -109,5 +114,6 @@ class ProfileStore(context: Context) {
         private const val KEY_SHAKE_SENS = "shake_sensitivity"
         private const val KEY_CONNECT_ON_BOOT = "connect_on_boot"
         private const val KEY_SHOULD_CONNECT = "should_be_connected"
+        private const val KEY_VIBRATE = "vibrate_on_toggle"
     }
 }

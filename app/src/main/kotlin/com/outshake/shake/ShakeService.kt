@@ -121,6 +121,7 @@ class ShakeService : Service() {
             .setContentTitle("Outshake")
             .setContentText("Shake detection active")
             .setSmallIcon(R.drawable.ic_launcher)
+            .setColor(ContextCompat.getColor(this, R.color.accent))
             .setContentIntent(pending)
             .setOngoing(true)
             .build()

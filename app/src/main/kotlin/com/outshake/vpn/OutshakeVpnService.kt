@@ -11,6 +11,7 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.outshake.R
 import com.outshake.config.Profile
 import com.outshake.config.ProfileImporter
@@ -243,6 +244,7 @@ class OutshakeVpnService : VpnService() {
             .setContentTitle("Outshake connected")
             .setContentText("Tunneling via $profileName")
             .setSmallIcon(R.drawable.ic_launcher)
+            .setColor(ContextCompat.getColor(this, R.color.accent))
             .setContentIntent(pending)
             .setOngoing(true)
             .build()

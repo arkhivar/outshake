@@ -38,6 +38,11 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        binding.vibrateSwitch.isChecked = store.vibrateOnToggle
+        binding.vibrateSwitch.setOnCheckedChangeListener { _, checked ->
+            store.vibrateOnToggle = checked
+        }
+
         binding.bootSwitch.isChecked = store.connectOnBoot
         binding.bootSwitch.setOnCheckedChangeListener { _, checked ->
             store.connectOnBoot = checked
