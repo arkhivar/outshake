@@ -9,6 +9,7 @@ A minimal, Android-native (Kotlin) Outline-compatible Shadowsocks VPN client for
 - Reliable connect/disconnect via Android `VpnService` with a userspace tun2socks (TCP + DNS-over-TCP).
 - Real Shadowsocks AEAD transport: `chacha20-ietf-poly1305`, `aes-256-gcm`, `aes-128-gcm`.
 - Shake-to-toggle: an accelerometer gesture connects/disconnects the active profile (opt-in, with sensitivity + cooldown).
+- Quick Settings tile: tap to toggle the active profile (same logic as the shake gesture, via the shared `ConnectionManager`); the tile shows Active/Inactive/Unavailable from live connection state.
 - Three screens: main (status/profiles), import, settings.
 
 Unsupported ciphers or transport graphs **fail clearly** — nothing is faked.
