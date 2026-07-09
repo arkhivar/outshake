@@ -56,6 +56,19 @@ class ProfileStore(context: Context) {
         get() = prefs.getFloat(KEY_SHAKE_SENS, 2.7f)
         set(value) = prefs.edit().putFloat(KEY_SHAKE_SENS, value).apply()
 
+    /** Connect the active profile automatically on device boot. OFF by default. */
+    var connectOnBoot: Boolean
+        get() = prefs.getBoolean(KEY_CONNECT_ON_BOOT, false)
+        set(value) = prefs.edit().putBoolean(KEY_CONNECT_ON_BOOT, value).apply()
+
+    /**
+     * The user's intent: true while the VPN should be up. Persisted so a process-death restart
+     * (START_STICKY) can re-establish the tunnel and the UI can reflect the true desired state.
+     */
+    var shouldBeConnected: Boolean
+        get() = prefs.getBoolean(KEY_SHOULD_CONNECT, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOULD_CONNECT, value).apply()
+
     private fun toJson(p: Profile): JSONObject = JSONObject().apply {
         put("id", p.id)
         put("name", p.name)
@@ -94,5 +107,7 @@ class ProfileStore(context: Context) {
         private const val KEY_ACTIVE = "active_profile"
         private const val KEY_SHAKE = "shake_enabled"
         private const val KEY_SHAKE_SENS = "shake_sensitivity"
+        private const val KEY_CONNECT_ON_BOOT = "connect_on_boot"
+        private const val KEY_SHOULD_CONNECT = "should_be_connected"
     }
 }

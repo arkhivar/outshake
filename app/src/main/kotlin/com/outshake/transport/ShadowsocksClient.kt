@@ -37,6 +37,9 @@ class ShadowsocksClient(private val config: TransportConfig) {
     val serverHost: String get() = config.host
     val serverPort: Int get() = config.port
 
+    /** A UDP codec bound to this profile's cipher/key. The prefix is intentionally not applied to UDP. */
+    fun udpCodec(): ShadowsocksUdpCodec = ShadowsocksUdpCodec(config.cipher, masterKey)
+
     /**
      * Perform the Shadowsocks handshake over [socket] and set up encryption toward [targetHost]:[targetPort].
      * The salt (prefixed if configured) plus the target address header are written immediately.

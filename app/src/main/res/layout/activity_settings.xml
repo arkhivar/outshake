@@ -44,4 +44,19 @@
         android:paddingTop="8dp"
         android:textSize="12sp"
         android:text="Lower = easier to trigger. A ~5s cooldown prevents repeated toggles. Shake detection keeps running in the background (a quiet notification shows while active) and plays a short shaker sound plus an on-screen message when it toggles the VPN." />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/bootSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="24dp"
+        android:text="Connect on boot"
+        android:textSize="16sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:textSize="12sp"
+        android:text="Automatically connect the active profile after the device restarts. VPN permission must already be granted (open the app once and connect); if it isn't, a notification will ask you to grant it." />
 </LinearLayout>

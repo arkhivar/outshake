@@ -68,6 +68,7 @@ class OutshakeTileService : TileService() {
         tile.contentDescription = when (state) {
             ConnectionManager.State.CONNECTED -> "Connected"
             ConnectionManager.State.CONNECTING -> "Connecting"
+            ConnectionManager.State.RECONNECTING -> "Reconnecting"
             ConnectionManager.State.DISCONNECTING -> "Disconnecting"
             ConnectionManager.State.ERROR -> "Error"
             ConnectionManager.State.DISCONNECTED -> "Disconnected"

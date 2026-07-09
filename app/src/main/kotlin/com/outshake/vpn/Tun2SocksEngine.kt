@@ -2,29 +2,41 @@ package com.outshake.vpn
 
 import android.util.Log
 import com.outshake.transport.ShadowsocksClient
+import com.outshake.transport.ShadowsocksUdpCodec
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 
-/** Protects a socket from being routed back into the VPN (VpnService.protect). */
-fun interface SocketProtector {
+/** Protects sockets from being routed back into the VPN (VpnService.protect). */
+interface SocketProtector {
     fun protect(socket: Socket): Boolean
+    fun protect(socket: DatagramSocket): Boolean
 }
 
 private const val TAG = "Tun2Socks"
 private const val MASK = 0xFFFFFFFFL
 private const val MSS = 1400
 private const val WINDOW = 65535
+private const val UDP_IDLE_MS = 60_000L        // drop a UDP flow after 60s idle
+private const val UDP_SWEEP_MS = 15_000L       // eviction sweep interval
+private const val DNS_FALLBACK_MS = 1_500L     // if no UDP DNS reply, retry over TCP
+private const val UDP_MAX_DATAGRAM = 65535
 
 /**
- * A pragmatic userspace tun2socks: parses IPv4 packets from the TUN device and tunnels TCP flows
- * (and DNS-over-UDP) through a Shadowsocks server. Designed for the lossless local TUN link, so it
- * does not implement TCP retransmission or congestion control. Non-DNS UDP is dropped.
+ * A pragmatic userspace tun2socks: parses IPv4 packets from the TUN device and tunnels TCP and UDP
+ * flows through a Shadowsocks server. Designed for the lossless local TUN link, so it does not
+ * implement TCP retransmission or congestion control. UDP is relayed per the Shadowsocks AEAD UDP
+ * spec (fresh salt per datagram); DNS is sent over UDP with a TCP fallback for UDP-disabled servers.
  */
 class Tun2SocksEngine(
     private val tunIn: FileInputStream,
@@ -34,7 +46,10 @@ class Tun2SocksEngine(
 ) {
     private val running = AtomicBoolean(false)
     private val sessions = ConcurrentHashMap<String, TcpSession>()
+    private val udpSessions = UdpNatTable<UdpSession>(UDP_IDLE_MS)
+    private val udpCodec: ShadowsocksUdpCodec = client.udpCodec()
     private val pool = Executors.newCachedThreadPool()
+    private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val writeLock = Any()
 
     fun writeToTun(pkt: ByteArray) {
@@ -51,12 +66,21 @@ class Tun2SocksEngine(
     fun start() {
         if (!running.compareAndSet(false, true)) return
         pool.execute { readLoop() }
+        scheduler.scheduleWithFixedDelay({
+            try {
+                udpSessions.evictExpired(System.currentTimeMillis()).forEach { it.close() }
+            } catch (e: Exception) {
+                Log.w(TAG, "udp eviction error: ${e.message}")
+            }
+        }, UDP_SWEEP_MS, UDP_SWEEP_MS, TimeUnit.MILLISECONDS)
     }
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
         sessions.values.forEach { it.close(sendRst = false) }
         sessions.clear()
+        udpSessions.values().forEach { it.close() }
+        scheduler.shutdownNow()
         pool.shutdownNow()
     }
 
@@ -234,40 +258,129 @@ class Tun2SocksEngine(
         }
     }
 
-    // ------------------------------------------------------------------ UDP (DNS only)
+    // ------------------------------------------------------------------ UDP
     private fun handleUdp(pkt: ByteArray) {
         val ihl = Ip.ihl(pkt)
-        val dstPort = Udp.dstPort(pkt, ihl)
-        if (dstPort != 53) return // only DNS is tunneled; other UDP is dropped
-
         val src = Ip.srcAddr(pkt)
         val dst = Ip.dstAddr(pkt)
         val srcPort = Udp.srcPort(pkt, ihl)
+        val dstPort = Udp.dstPort(pkt, ihl)
         val udpLen = Udp.length(pkt, ihl)
+        if (udpLen < 8 || ihl + udpLen > pkt.size) return
         val dataOff = ihl + 8
-        val query = pkt.copyOfRange(dataOff, dataOff + (udpLen - 8))
+        val payload = pkt.copyOfRange(dataOff, dataOff + (udpLen - 8))
 
-        pool.execute {
+        val key = "${Ip.ipToString(src)}:$srcPort"
+        val now = System.currentTimeMillis()
+        val session = udpSessions.getOrCreate(key, now) { UdpSession(key, src, srcPort) }
+        session.send(dst, dstPort, payload)
+    }
+
+    /**
+     * One relay session per app-side UDP endpoint. A single protected [DatagramSocket] to the
+     * Shadowsocks server carries datagrams to any number of targets (each SS UDP packet embeds its
+     * own target address); replies are decrypted and written back to the TUN as the origin endpoint.
+     */
+    private inner class UdpSession(
+        private val key: String,
+        private val localAddr: ByteArray,
+        private val localPort: Int,
+    ) {
+        private val socket = DatagramSocket()
+        private val closed = AtomicBoolean(false)
+        // DNS transaction ids awaiting a UDP reply; each has a scheduled TCP-fallback task.
+        private val pendingDns = ConcurrentHashMap<Int, java.util.concurrent.ScheduledFuture<*>>()
+
+        init {
+            protector.protect(socket)
+            socket.connect(InetSocketAddress(client.serverHost, client.serverPort))
+            pool.execute { receiveLoop() }
+        }
+
+        fun send(dstAddr: ByteArray, dstPort: Int, payload: ByteArray) {
+            if (closed.get()) return
+            udpSessions.touch(key, System.currentTimeMillis())
             try {
-                val socket = Socket()
-                protector.protect(socket)
-                socket.connect(InetSocketAddress(client.serverHost, client.serverPort), 10000)
-                val c = client.connect(socket, Ip.ipToString(dst), 53)
-                // DNS over TCP framing: 2-byte length prefix.
-                val framed = ByteArray(query.size + 2)
-                framed[0] = ((query.size shr 8) and 0xFF).toByte()
-                framed[1] = (query.size and 0xFF).toByte()
-                System.arraycopy(query, 0, framed, 2, query.size)
-                c.write(framed, 0, framed.size)
-
-                val resp = readDnsResponse(c)
-                c.close()
-                if (resp != null) {
-                    writeToTun(PacketBuilder.udp(dst, 53, src, srcPort, resp))
-                }
+                val wire = udpCodec.encode(Ip.ipToString(dstAddr), dstPort, payload)
+                socket.send(DatagramPacket(wire, wire.size))
+                if (dstPort == 53) armDnsFallback(dstAddr, payload)
             } catch (e: Exception) {
-                Log.w(TAG, "DNS forward failed: ${e.message}")
+                Log.w(TAG, "udp send failed for $key: ${e.message}")
             }
+        }
+
+        private fun receiveLoop() {
+            val buf = ByteArray(UDP_MAX_DATAGRAM)
+            while (!closed.get()) {
+                val dp = DatagramPacket(buf, buf.size)
+                try {
+                    socket.receive(dp)
+                } catch (e: Exception) {
+                    break
+                }
+                udpSessions.touch(key, System.currentTimeMillis())
+                try {
+                    val decoded = udpCodec.decode(dp.data.copyOf(dp.length)) ?: continue
+                    val originAddr = InetAddress.getByName(decoded.host).address
+                    if (decoded.port == 53) cancelDnsFallback(decoded.payload)
+                    writeToTun(
+                        PacketBuilder.udp(originAddr, decoded.port, localAddr, localPort, decoded.payload)
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "udp reply decode failed for $key: ${e.message}")
+                }
+            }
+        }
+
+        /** If no UDP DNS reply arrives in time, resolve the query over the reliable TCP path. */
+        private fun armDnsFallback(dstAddr: ByteArray, query: ByteArray) {
+            val txid = dnsTxId(query) ?: return
+            if (pendingDns.containsKey(txid)) return
+            val task = scheduler.schedule({
+                if (pendingDns.remove(txid) == null || closed.get()) return@schedule
+                try {
+                    val resp = dnsOverTcp(dstAddr, query)
+                    if (resp != null && !closed.get()) {
+                        writeToTun(PacketBuilder.udp(dstAddr, 53, localAddr, localPort, resp))
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "DNS TCP fallback failed: ${e.message}")
+                }
+            }, DNS_FALLBACK_MS, TimeUnit.MILLISECONDS)
+            pendingDns[txid] = task
+        }
+
+        private fun cancelDnsFallback(reply: ByteArray) {
+            val txid = dnsTxId(reply) ?: return
+            pendingDns.remove(txid)?.cancel(false)
+        }
+
+        fun close() {
+            if (!closed.compareAndSet(false, true)) return
+            pendingDns.values.forEach { it.cancel(false) }
+            pendingDns.clear()
+            try { socket.close() } catch (_: Exception) {}
+            udpSessions.remove(key)
+        }
+    }
+
+    private fun dnsTxId(dns: ByteArray): Int? =
+        if (dns.size >= 2) ((dns[0].toInt() and 0xFF) shl 8) or (dns[1].toInt() and 0xFF) else null
+
+    private fun dnsOverTcp(dstAddr: ByteArray, query: ByteArray): ByteArray? {
+        val socket = Socket()
+        protector.protect(socket)
+        socket.connect(InetSocketAddress(client.serverHost, client.serverPort), 10000)
+        val c = client.connect(socket, Ip.ipToString(dstAddr), 53)
+        try {
+            val framed = ByteArray(query.size + 2)
+            framed[0] = ((query.size shr 8) and 0xFF).toByte()
+            framed[1] = (query.size and 0xFF).toByte()
+            System.arraycopy(query, 0, framed, 2, query.size)
+            c.write(framed, 0, framed.size)
+            return readDnsResponse(c)
+        } finally {
+            c.close()
         }
     }
 

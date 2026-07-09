@@ -38,6 +38,12 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        binding.bootSwitch.isChecked = store.connectOnBoot
+        binding.bootSwitch.setOnCheckedChangeListener { _, checked ->
+            store.connectOnBoot = checked
+            if (checked) ensureNotificationPermission()
+        }
+
         val current = store.shakeSensitivity
         binding.sensitivitySeek.progress = gToProgress(current)
         updateSensitivityLabel(current)

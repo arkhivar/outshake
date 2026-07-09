@@ -80,7 +80,8 @@ class MainActivity : AppCompatActivity() {
     private fun onToggleClicked() {
         when (ConnectionManager.state.value) {
             ConnectionManager.State.CONNECTED -> ConnectionManager.disconnect(this)
-            ConnectionManager.State.CONNECTING, ConnectionManager.State.DISCONNECTING -> {}
+            ConnectionManager.State.CONNECTING, ConnectionManager.State.DISCONNECTING,
+            ConnectionManager.State.RECONNECTING -> {}
             else -> {
                 val active = store.activeProfile()
                 if (active == null) {
@@ -107,6 +108,7 @@ class MainActivity : AppCompatActivity() {
             ConnectionManager.State.DISCONNECTED -> "Disconnected"
             ConnectionManager.State.CONNECTING -> "Connecting…"
             ConnectionManager.State.CONNECTED -> "Connected"
+            ConnectionManager.State.RECONNECTING -> "Reconnecting…"
             ConnectionManager.State.DISCONNECTING -> "Disconnecting…"
             ConnectionManager.State.ERROR -> "Error"
         }

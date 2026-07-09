@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 object ConnectionManager {
 
-    enum class State { DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING, ERROR }
+    enum class State { DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, DISCONNECTING, ERROR }
 
     private val _state = MutableStateFlow(State.DISCONNECTED)
     val state: StateFlow<State> = _state.asStateFlow()
@@ -72,6 +72,7 @@ object ConnectionManager {
 
     // Called by the service as its lifecycle progresses.
     fun onConnected() { _state.value = State.CONNECTED }
+    fun onReconnecting() { _state.value = State.RECONNECTING }
     fun onDisconnected() { _state.value = State.DISCONNECTED }
     fun onError(message: String) {
         lastError = message

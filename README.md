@@ -6,7 +6,9 @@ A minimal, Android-native (Kotlin) Outline-compatible Shadowsocks VPN client for
 - Import static `ss://` keys (SIP002 and legacy base64 forms).
 - Import dynamic `ssconf://` keys — fetches the remote config (JSON, YAML transport graph, or an `ss://` line), with refresh.
 - Prefix support in both static (`?prefix=` URL-encoded) and dynamic (JSON/YAML string) flows, applied to the Shadowsocks salt (Outline `PrefixSaltGenerator` semantics).
-- Reliable connect/disconnect via Android `VpnService` with a userspace tun2socks (TCP + DNS-over-TCP).
+- Reliable connect/disconnect via Android `VpnService` with a userspace tun2socks (full TCP + UDP relay).
+- Full Shadowsocks UDP relay (SIP007): QUIC/HTTP3, games and voice tunnel over UDP with a per-flow NAT table and idle eviction. DNS is sent over UDP with an automatic DNS-over-TCP fallback for servers that have UDP disabled.
+- "Install and forget" reliability: auto-reconnect on Wi-Fi↔cellular changes, process-death recovery (the tunnel comes back after a memory kill), an optional connect-on-boot toggle (off by default), and a one-shot config re-fetch + retry when a dynamic (ssconf) profile fails to connect.
 - Real Shadowsocks AEAD transport: `chacha20-ietf-poly1305`, `aes-256-gcm`, `aes-128-gcm`.
 - Shake-to-toggle: an accelerometer gesture connects/disconnects the active profile (on by default, with sensitivity + a ~5s cooldown). Runs in a small foreground service so it works while the app is backgrounded; a quiet shaker sound (brighter = on, darker = off) plus an on-screen "VPN activated"/"VPN off" toast fire the instant a shake is accepted. The sound uses the notification stream, so it stays silent when the ringer is on silent/vibrate.
 - Quick Settings tile: tap to toggle the active profile (same logic as the shake gesture, via the shared `ConnectionManager`); the tile shows Active/Inactive/Unavailable from live connection state.
@@ -45,6 +47,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 3. Settings -> enable "Shake to connect/disconnect"; shake the device to toggle.
 
 ## Known limitations
-- Non-DNS UDP is not tunneled (QUIC/HTTP3 falls back to TCP). DNS is forwarded over TCP through the proxy.
+- The Outline "prefix" is applied to the TCP salt only (matching Outline's `PrefixSaltGenerator`); UDP datagrams use a fully random salt per packet, as the spec/Outline intend.
 - Userspace TCP stack is tuned for the lossless local TUN link (no retransmission/congestion control).
-- Shake detection runs while the app is in the foreground.
+- Background shake and auto-reconnect are best-effort during deep doze with the screen off (no wakelock, battery-sane).

@@ -127,6 +127,46 @@ object SocksAddress {
         return out.toByteArray()
     }
 
+    /** The address header length for the given ATYP byte at [buf]\[off], or -1 if malformed/truncated. */
+    fun headerLength(buf: ByteArray, off: Int): Int {
+        if (off >= buf.size) return -1
+        return when (buf[off].toInt() and 0xFF) {
+            0x01 -> 1 + 4 + 2               // ATYP + IPv4 + port
+            0x04 -> 1 + 16 + 2              // ATYP + IPv6 + port
+            0x03 -> {
+                if (off + 1 >= buf.size) return -1
+                val hlen = buf[off + 1].toInt() and 0xFF
+                1 + 1 + hlen + 2            // ATYP + len + host + port
+            }
+            else -> -1
+        }
+    }
+
+    /** Parse an address header at [buf]\[off] into (host, port), or null if malformed/truncated. */
+    fun parse(buf: ByteArray, off: Int): Pair<String, Int>? {
+        val hlen = headerLength(buf, off)
+        if (hlen < 0 || off + hlen > buf.size) return null
+        return when (buf[off].toInt() and 0xFF) {
+            0x01 -> {
+                val host = (0 until 4).joinToString(".") { (buf[off + 1 + it].toInt() and 0xFF).toString() }
+                host to portAt(buf, off + 1 + 4)
+            }
+            0x04 -> {
+                val addr = java.net.InetAddress.getByAddress(buf.copyOfRange(off + 1, off + 1 + 16))
+                (addr.hostAddress ?: return null) to portAt(buf, off + 1 + 16)
+            }
+            0x03 -> {
+                val n = buf[off + 1].toInt() and 0xFF
+                val host = String(buf, off + 2, n, Charsets.US_ASCII)
+                host to portAt(buf, off + 2 + n)
+            }
+            else -> null
+        }
+    }
+
+    private fun portAt(buf: ByteArray, off: Int): Int =
+        ((buf[off].toInt() and 0xFF) shl 8) or (buf[off + 1].toInt() and 0xFF)
+
     private fun parseIpv4(host: String): ByteArray? {
         val parts = host.split(".")
         if (parts.size != 4) return null
