@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Outshake</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="add_profile">Add profile</string>
+    <string name="settings">Settings</string>
+    <string name="import_title">Import profile</string>
+    <string name="key_hint">Paste ss:// or ssconf:// key</string>
+    <string name="import_action">Import</string>
+    <string name="shake_toggle">Shake to connect / disconnect</string>
+    <string name="shake_sensitivity">Shake sensitivity</string>
+    <string name="no_profiles">No profiles yet. Tap \"Add profile\" to import an ss:// or ssconf:// key.</string>
+    <string name="delete">Delete</string>
+    <string name="refresh">Refresh</string>
+</resources>
