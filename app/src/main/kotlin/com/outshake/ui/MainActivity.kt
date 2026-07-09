@@ -15,7 +15,7 @@ import com.outshake.config.Profile
 import com.outshake.config.ProfileImporter
 import com.outshake.databinding.ActivityMainBinding
 import com.outshake.databinding.ItemProfileBinding
-import com.outshake.shake.ShakeDetector
+import com.outshake.shake.ShakeService
 import com.outshake.store.ProfileStore
 import com.outshake.vpn.ConnectionManager
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +27,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var store: ProfileStore
     private lateinit var adapter: ProfileAdapter
-    private var shakeDetector: ShakeDetector? = null
+
+    private val requestNotifications =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best effort */ }
 
     private val vpnPrepare = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -54,30 +56,25 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             ConnectionManager.state.collect { render(it) }
         }
+
+        ensureNotificationPermission()
     }
 
     override fun onResume() {
         super.onResume()
         refreshProfiles()
         render(ConnectionManager.state.value)
-        setupShake()
+        // Shake detection runs in a foreground service (works while backgrounded); start if enabled.
+        ShakeService.sync(this)
     }
 
-    override fun onPause() {
-        super.onPause()
-        shakeDetector?.let { ShakeDetector.unregister(this, it) }
-        shakeDetector = null
-    }
-
-    private fun setupShake() {
-        if (!store.shakeEnabled) return
-        val detector = ShakeDetector(thresholdG = store.shakeSensitivity) {
-            runOnUiThread {
-                val msg = ConnectionManager.toggle(this)
-                Toast.makeText(this, "Shake: $msg", Toast.LENGTH_SHORT).show()
-            }
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
-        if (ShakeDetector.register(this, detector)) shakeDetector = detector
     }
 
     private fun onToggleClicked() {

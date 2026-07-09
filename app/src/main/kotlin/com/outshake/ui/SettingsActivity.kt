@@ -1,15 +1,21 @@
 package com.outshake.ui
 
+import android.os.Build
 import android.os.Bundle
 import android.widget.SeekBar
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.outshake.databinding.ActivitySettingsBinding
+import com.outshake.shake.ShakeService
 import com.outshake.store.ProfileStore
 
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var store: ProfileStore
+
+    private val requestNotifications =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best effort */ }
 
     // Sensitivity maps a 0..100 seek value onto a g-force threshold of 3.6 (hard) .. 1.6 (easy).
     private val minG = 1.6f
@@ -22,7 +28,15 @@ class SettingsActivity : AppCompatActivity() {
         store = ProfileStore(this)
 
         binding.shakeSwitch.isChecked = store.shakeEnabled
-        binding.shakeSwitch.setOnCheckedChangeListener { _, checked -> store.shakeEnabled = checked }
+        binding.shakeSwitch.setOnCheckedChangeListener { _, checked ->
+            store.shakeEnabled = checked
+            if (checked) {
+                ensureNotificationPermission()
+                ShakeService.start(this)
+            } else {
+                ShakeService.stop(this)
+            }
+        }
 
         val current = store.shakeSensitivity
         binding.sensitivitySeek.progress = gToProgress(current)
@@ -36,6 +50,15 @@ class SettingsActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+    }
+
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     private fun progressToG(progress: Int): Float = maxG - (maxG - minG) * (progress / 100f)

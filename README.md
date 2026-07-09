@@ -8,7 +8,7 @@ A minimal, Android-native (Kotlin) Outline-compatible Shadowsocks VPN client for
 - Prefix support in both static (`?prefix=` URL-encoded) and dynamic (JSON/YAML string) flows, applied to the Shadowsocks salt (Outline `PrefixSaltGenerator` semantics).
 - Reliable connect/disconnect via Android `VpnService` with a userspace tun2socks (TCP + DNS-over-TCP).
 - Real Shadowsocks AEAD transport: `chacha20-ietf-poly1305`, `aes-256-gcm`, `aes-128-gcm`.
-- Shake-to-toggle: an accelerometer gesture connects/disconnects the active profile (opt-in, with sensitivity + cooldown).
+- Shake-to-toggle: an accelerometer gesture connects/disconnects the active profile (on by default, with sensitivity + a ~5s cooldown). Runs in a small foreground service so it works while the app is backgrounded; a quiet shaker sound (brighter = on, darker = off) plus an on-screen "VPN activated"/"VPN off" toast fire the instant a shake is accepted. The sound uses the notification stream, so it stays silent when the ringer is on silent/vibrate.
 - Quick Settings tile: tap to toggle the active profile (same logic as the shake gesture, via the shared `ConnectionManager`); the tile shows Active/Inactive/Unavailable from live connection state.
 - Three screens: main (status/profiles), import, settings.
 

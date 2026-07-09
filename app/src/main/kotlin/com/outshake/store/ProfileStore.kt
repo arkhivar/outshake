@@ -43,8 +43,12 @@ class ProfileStore(context: Context) {
 
     fun activeProfile(): Profile? = activeProfileId?.let { id -> getProfiles().firstOrNull { it.id == id } }
 
+    /**
+     * Shake-to-toggle is ON by default. An existing user's explicit choice is preserved: once the
+     * switch has been touched the stored value wins; only a never-set preference defaults to true.
+     */
     var shakeEnabled: Boolean
-        get() = prefs.getBoolean(KEY_SHAKE, false)
+        get() = prefs.getBoolean(KEY_SHAKE, true)
         set(value) = prefs.edit().putBoolean(KEY_SHAKE, value).apply()
 
     /** Shake sensitivity threshold in g-force above gravity (higher = harder shake required). */
