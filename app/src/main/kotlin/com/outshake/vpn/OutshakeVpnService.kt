@@ -7,9 +7,12 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.outshake.R
@@ -33,8 +36,10 @@ class OutshakeVpnService : VpnService() {
 
     private var connectivity: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private val sawInitialNetwork = AtomicBoolean(false)
     private val reconnecting = AtomicBoolean(false)
+
+    /** Underlying-network change gate. Only touched from the ConnectivityManager callback thread. */
+    private var policyState = ReconnectPolicy.State()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -170,19 +175,54 @@ class OutshakeVpnService : VpnService() {
     private fun registerNetworkCallback() {
         if (networkCallback != null) return
         val cm = getSystemService(CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        // Only observe real internet-bearing, NON-VPN networks. This excludes our own TUN, so the
+        // VPN coming up never masquerades as a "network change" — the root cause of the old loop.
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .build()
         val cb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                // The first callback is the network we're already on; only react to later changes.
-                if (sawInitialNetwork.compareAndSet(false, true)) return
-                reconnect()
+                onUnderlyingNetwork(network)
+            }
+            override fun onLost(network: Network) {
+                policyState = ReconnectPolicy.onLost(network.networkHandle, policyState)
             }
         }
         try {
-            cm.registerDefaultNetworkCallback(cb)
+            cm.registerNetworkCallback(request, cb)
             connectivity = cm
             networkCallback = cb
         } catch (e: Exception) {
             Log.w(TAG, "network callback registration failed: ${e.message}")
+        }
+    }
+
+    /** Feed a NOT_VPN network event through the pure gate and act on its decision. */
+    private fun onUnderlyingNetwork(network: Network) {
+        val event = ReconnectPolicy.Event(
+            networkId = network.networkHandle,
+            isVpn = false,        // guaranteed by the NET_CAPABILITY_NOT_VPN request filter
+            hasInternet = true,   // guaranteed by the NET_CAPABILITY_INTERNET request filter
+        )
+        val transitioning = ConnectionManager.state.value.let {
+            it == ConnectionManager.State.CONNECTING ||
+                it == ConnectionManager.State.RECONNECTING ||
+                it == ConnectionManager.State.DISCONNECTING
+        }
+        val result = ReconnectPolicy.onNetwork(event, transitioning, SystemClock.elapsedRealtime(), policyState)
+        policyState = result.state
+        when (result.action) {
+            ReconnectPolicy.Action.IGNORE -> setUnderlyingNetworks(arrayOf(network))
+            ReconnectPolicy.Action.RECONNECT -> {
+                setUnderlyingNetworks(arrayOf(network))
+                reconnect()
+            }
+            ReconnectPolicy.Action.GIVE_UP -> {
+                Log.w(TAG, "too many rapid network changes; giving up to avoid a reconnect loop")
+                ConnectionManager.onError("Network unstable — reconnect stopped")
+                stopTunnel()
+            }
         }
     }
 
@@ -194,7 +234,7 @@ class OutshakeVpnService : VpnService() {
         }
         networkCallback = null
         connectivity = null
-        sawInitialNetwork.set(false)
+        policyState = ReconnectPolicy.State()
     }
 
     private fun stopTunnel() {
